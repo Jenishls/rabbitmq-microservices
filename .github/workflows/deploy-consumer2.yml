@@ -1,27 +1,32 @@
 name: Deploy RabbitConsumer2
 
-
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'RabbitConsumer2
-      /**' # Triggers ONLY when something in this folder changes
+      - "RabbitConsumer2/**"
 
 jobs:
-  build-and-push:
+  build-and-package:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    # Log in to your container registry here (GHCR, AWS ECR, etc.)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Build and Push Docker Image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./RabbitConsumer2
-        /Dockerfile # Points directly to this consumer's Dockerfile
-        push: true
-        tags: ghcr.io/your-username/rabbit-consumer-1:latest
+      - name: Verify Dockerfile Presence
+        run: |
+          if [ ! -f "./RabbitConsumer2/Dockerfile" ]; then
+            echo "Error: Dockerfile not found in RabbitConsumer2 directory!"
+            exit 1
+          fi
+
+      - name: Build Local Container
+        run: |
+          docker build -t rabbit-consumer-2:local ./RabbitConsumer2/
+
+      - name: Workflow Status Output
+        run: echo "Successfully built and verified RabbitConsumer2 container!"
