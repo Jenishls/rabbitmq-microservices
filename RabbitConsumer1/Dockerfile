@@ -1,5 +1,5 @@
 # 1. Build Stage
-FROM ://microsoft.com AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy only the specific csproj to restore dependencies
@@ -11,7 +11,7 @@ COPY . .
 RUN dotnet publish "RabbitConsumer1.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # 2. Runtime Stage (Uses a tiny runtime image without the heavy SDK)
-FROM ://microsoft.com AS final
+FROM mcr.microsoft.com/dotnet/runtime:8.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "RabbitConsumer1.dll"]

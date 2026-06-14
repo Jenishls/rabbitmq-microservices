@@ -1,15 +1,13 @@
 # 1. Build Stage
-FROM ://microsoft.com AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 COPY ["RabbitProducer.csproj", "./"]
 RUN dotnet restore "RabbitProducer.csproj"
-
 COPY . .
 RUN dotnet publish "RabbitProducer.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-# 2. Runtime Stage (Uses ASP.NET core for web/API endpoints)
-FROM ://microsoft.com AS final
+# 2. Runtime Stage
+FROM mcr.microsoft.com/dotnet/runtime:8.0 AS final
 WORKDIR /app
-EXPOSE 8080
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "RabbitProducer.dll"]
