@@ -33,4 +33,4 @@ jobs:
         docker build -t rabbit-producer:local ./RabbitProducer/
 
     - name: Workflow Status Output
-      run: echo "Successfully built and verified RabbitProducer container!"
+      run: echo "Successfully built and verified RabbitProducer container!" 
