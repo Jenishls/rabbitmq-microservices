@@ -1,0 +1,36 @@
+name: Deploy RabbitProducer
+
+# 1. THE TRIGGER: When should this script wake up?
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'RabbitProducer/**' # ONLY run if files inside the Producer folder change
+
+# 2. THE ENVIRONMENT: Where should this automation run?
+jobs:
+  build-and-package:
+    runs-on: ubuntu-latest # Spins up a clean Linux virtual machine on GitHub's cloud
+
+    # 3. THE STEPS: The sequential instructions for the GitHub robot
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4 # Pulls your repository code into the Linux machine
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3 # Prepares Docker inside GitHub Actions
+
+    - name: Verify Dockerfile Presence
+      run: |
+        if [ ! -f "./RabbitProducer/Dockerfile" ]; then
+          echo "Error: Dockerfile not found in RabbitProducer directory!"
+          exit 1
+        fi
+
+    - name: Build Local Container
+      run: |
+        # Tells Docker to read the Dockerfile inside your folder and compile the app
+        docker build -t rabbit-producer:local ./RabbitProducer/
+
+    - name: Workflow Status Output
+      run: echo "Successfully built and verified RabbitProducer container!"

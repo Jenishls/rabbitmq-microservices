@@ -1,0 +1,27 @@
+name: Deploy RabbitConsumer2
+
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'RabbitConsumer2
+      /**' # Triggers ONLY when something in this folder changes
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # Log in to your container registry here (GHCR, AWS ECR, etc.)
+
+    - name: Build and Push Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./RabbitConsumer2
+        /Dockerfile # Points directly to this consumer's Dockerfile
+        push: true
+        tags: ghcr.io/your-username/rabbit-consumer-1:latest
