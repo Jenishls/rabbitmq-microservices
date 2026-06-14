@@ -14,12 +14,27 @@ jobs:
       packages: write
     env:
       IMAGE_OWNER: ${{ github.repository_owner }}
+      IMAGE_NAME: rabbit-consumer-1
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Verify Dockerfile Presence
+        run: |
+          if [ ! -f "./RabbitConsumer1/Dockerfile" ]; then
+            echo "Error: Dockerfile not found in RabbitConsumer1 directory!"
+            ls -al ./RabbitConsumer1
+            exit 1
+          fi
+
+      - name: Print resolved GitHub environment values
+        run: |
+          echo "IMAGE_OWNER=${IMAGE_OWNER}"
+          echo "IMAGE_NAME=${IMAGE_NAME}"
+          echo "IMAGE_TAG=ghcr.io/${IMAGE_OWNER}/${IMAGE_NAME}:latest"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -32,6 +47,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./RabbitConsumer1
-          file: ./RabbitConsumer1/Dockerfile # Points directly to this consumer's Dockerfile
+          file: ./RabbitConsumer1/Dockerfile
           push: true
-          tags: ghcr.io/${{ env.IMAGE_OWNER }}/rabbit-consumer-1:latest
+          platforms: linux/amd64
+          tags: ghcr.io/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_NAME }}:latest
