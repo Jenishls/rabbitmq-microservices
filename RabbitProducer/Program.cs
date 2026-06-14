@@ -110,9 +110,9 @@ var props = new BasicProperties
     DeliveryMode = DeliveryModes.Persistent
 };
 
-const int batchSize = 10000; // Define a manageable batch size
+const int batchSize = 10; // Define a manageable batch size
 var allTasks = new List<Task>();
-int totalMessages = 100000002;
+int totalMessages = 100;
 for (int i = 1; i <= totalMessages; i++)
 {
     string message = $"Message #{i}";
