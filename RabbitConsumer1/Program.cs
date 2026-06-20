@@ -1,5 +1,6 @@
-﻿using RabbitMQ.Client;
+using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitConsumer1;
 using System.Text;
 
 Console.WriteLine("Starting...");
@@ -75,35 +76,18 @@ await channel.QueueDeclareAsync(
     durable: true,
     exclusive: false,
     autoDelete: false,
-    arguments: queueArgs         // ← binds DLX to this queue
+    arguments: queueArgs
 );
 
+var consumerService = new ConsumerService(channel);
 var consumer = new AsyncEventingBasicConsumer(channel);
 
 consumer.ReceivedAsync += async (sender, ea) =>
 {
-    var body = ea.Body.ToArray();
-    var message = Encoding.UTF8.GetString(body);
-
-    Console.WriteLine($"[Consumer] Received: {message}");
-
-    try
-    {
-        if (message.Contains("9999"))
-            throw new Exception("Bad message");
-
-        await channel.BasicAckAsync(ea.DeliveryTag, multiple: false);
-        if (ea.DeliveryTag % 10000 == 0)
-        Console.WriteLine($"[Consumer] Acked: {message}");
-    }
-    catch
-    {
-        Console.WriteLine($"[Consumer] Moving to DLQ: {message}");
-        await channel.BasicRejectAsync(ea.DeliveryTag, requeue: false);
-    }
+    await consumerService.HandleMessageAsync(ea);
 };
 
-// 3. Set prefetch so messages aren't buffered invisibly
+// 3. Set prefetch
 await channel.BasicQosAsync(prefetchSize: 0, prefetchCount: 10000, global: false);
 
 await channel.BasicConsumeAsync(
