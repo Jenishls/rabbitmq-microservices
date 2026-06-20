@@ -1,0 +1,11 @@
+bin/
+obj/
+*.log
+*.txt
+.vs/
+.idea/
+.vscode/
+/test_results.log
+/test_output.log
+/results.txt
+/test_results.txt

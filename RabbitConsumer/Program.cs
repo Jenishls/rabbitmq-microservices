@@ -1,5 +1,6 @@
-﻿using RabbitMQ.Client;
+using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitConsumer;
 using System.Text;
 
 Console.WriteLine("Starting...");
@@ -73,6 +74,8 @@ for (int i = 0; i < consumerCount; i++)
 
     await ch.BasicQosAsync(prefetchSize: 0, prefetchCount: prefetchPerConsumer, global: false);
 
+    var consumerService = new ConsumerService(ch);
+
     ulong lastDeliveryTag = 0;
     int sinceLastAck = 0;
     var ackLock = new object();
@@ -89,7 +92,7 @@ for (int i = 0; i < consumerCount; i++)
         await ch.BasicAckAsync(tagToAck, multiple: true);
     }
 
-    // Periodic flush so low-traffic moments don't leave acks pending too long
+    // Periodic flush
     var ackFlushTask = Task.Run(async () =>
     {
         while (!cts.IsCancellationRequested)
@@ -105,30 +108,29 @@ for (int i = 0; i < consumerCount; i++)
     var consumer = new AsyncEventingBasicConsumer(ch);
     consumer.ReceivedAsync += async (sender, ea) =>
     {
-        var message = Encoding.UTF8.GetString(ea.Body.Span);
-
-        if (message.Contains("9999"))
+        await consumerService.ProcessMessageWithAckAsync(ea, async (tag) =>
         {
-            await ch.BasicRejectAsync(ea.DeliveryTag, requeue: false);
+            bool flushNow;
+            lock (ackLock)
+            {
+                lastDeliveryTag = tag;
+                sinceLastAck++;
+                flushNow = sinceLastAck >= ackBatchSize;
+            }
+
+            if (flushNow)
+                await FlushAckAsync();
+
+            var count = Interlocked.Increment(ref totalProcessed);
+            if (count % 50000 == 0)
+                Console.WriteLine($"[Consumer] Processed {count} messages total.");
+        });
+
+        if (Encoding.UTF8.GetString(ea.Body.Span).Contains("9999"))
+        {
             var dl = Interlocked.Increment(ref totalDeadLettered);
-            Console.WriteLine($"[Consumer] Dead-lettered #{dl}: {message}");
-            return;
+            Console.WriteLine($"[Consumer] Dead-lettered #{dl}");
         }
-
-        bool flushNow;
-        lock (ackLock)
-        {
-            lastDeliveryTag = ea.DeliveryTag;
-            sinceLastAck++;
-            flushNow = sinceLastAck >= ackBatchSize;
-        }
-
-        if (flushNow)
-            await FlushAckAsync();
-
-        var count = Interlocked.Increment(ref totalProcessed);
-        if (count % 50000 == 0)
-            Console.WriteLine($"[Consumer] Processed {count} messages total.");
     };
 
     await ch.BasicConsumeAsync("main-queue", autoAck: false, consumer: consumer);
@@ -140,7 +142,6 @@ Console.ReadLine();
 cts.Cancel();
 await Task.WhenAll(flushTasks);
 
-// Close channels cleanly (any leftover unacked batch will be redelivered on next run)
 foreach (var ch in channels)
 {
     try { await ch.CloseAsync(); } catch { }

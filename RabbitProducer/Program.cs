@@ -1,10 +1,11 @@
-﻿using RabbitMQ.Client;
+using RabbitMQ.Client;
+using RabbitProducer;
 using System.Text;
 
 var factory = new ConnectionFactory
 {
     Uri = new Uri("amqps://cotb:"),
-        AutomaticRecoveryEnabled = true,
+    AutomaticRecoveryEnabled = true,
     NetworkRecoveryInterval = TimeSpan.FromSeconds(5),
     TopologyRecoveryEnabled = true,
 };
@@ -26,7 +27,7 @@ for (int attempt = 1; attempt <= maxRetries; attempt++)
     catch
     {
         Console.WriteLine($"RabbitMQ down. Retry {attempt}/{maxRetries}...");
-        await Task.Delay(3000); // ✅ async-friendly
+        await Task.Delay(3000);
     }
 }
 
@@ -105,45 +106,17 @@ await channel.QueueBindAsync(
     routingKey: "main-routing"
 );
 
+var producerService = new ProducerService(channel);
 var props = new BasicProperties
 {
     DeliveryMode = DeliveryModes.Persistent
 };
 
-const int batchSize = 10; // Define a manageable batch size
-var allTasks = new List<Task>();
+const int batchSize = 10;
 int totalMessages = 100;
-for (int i = 1; i <= totalMessages; i++)
-{
-    string message = $"Message #{i}";
-    var body = Encoding.UTF8.GetBytes(message);
+var messages = Enumerable.Range(1, totalMessages).Select(i => $"Message #{i}");
 
-    // Add the task to the list, but DO NOT await it yet.
-    allTasks.Add(channel.BasicPublishAsync(
-        exchange: "main-exchange",
-        routingKey: "main-routing",
-        mandatory: false,
-        basicProperties: props,
-        body: body
-    ).AsTask()); // Convert ValueTask to Task for easier management
-
-    // Check if the batch limit is reached OR it's the last message
-    if (allTasks.Count >= batchSize || i == totalMessages)
-    {
-        Console.WriteLine($"[Producer] Sending Batch of {Math.Min(batchSize, allTasks.Count)} messages...");
-
-        // Await all tasks currently in the list (this is where concurrency is limited)
-        await Task.WhenAll(allTasks);
-
-        // Clear the task list and proceed to the next batch
-        allTasks.Clear();
-
-        if (i == totalMessages) break; // Exit after processing the final batch
-    }
-
-    if (i % 100000 == 0 && i != 100000002)
-        Console.WriteLine($"[Producer] Successfully processed up to {i} messages.");
-}
-
+Console.WriteLine($"[Producer] Sending {totalMessages} messages in batches of {batchSize}...");
+await producerService.PublishBatchAsync("main-exchange", "main-routing", messages, batchSize, props);
 
 Console.WriteLine("[Producer] Done.");

@@ -1,6 +1,8 @@
 <Solution>
+  <Project Path="ProductModule/ProductModule.csproj" />
   <Project Path="RabbitConsumer/RabbitConsumer.csproj" />
   <Project Path="RabbitConsumer1/RabbitConsumer1.csproj" />
   <Project Path="RabbitConsumer2/RabbitConsumer2.csproj" />
+  <Project Path="RabbitMQ.Tests/RabbitMQ.Tests.csproj" />
   <Project Path="RabbitProducer/RabbitProducer.csproj" />
 </Solution>
